@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
-set -o errexit
+# Build script for Render deployment
 
-echo "🚀 Starting minimal build..."
+set -o errexit  # exit on error
 
-# Upgrade pip
-python -m pip install --upgrade pip
+# Install dependencies
+pip install -r requirements.txt
 
-# Install minimal dependencies
-echo "📦 Installing minimal dependencies..."
-pip install --no-cache-dir Flask==3.0.0
-pip install --no-cache-dir Flask-SQLAlchemy==3.1.1
-pip install --no-cache-dir psycopg2-binary==2.9.9
-pip install --no-cache-dir gunicorn==21.2.0
-
-# Create directories
-echo "📁 Creating directories..."
+# Create necessary directories
 mkdir -p logs data
 
-echo "✅ Minimal build completed!"
+# Initialize database
+python -c "
+from controller import app, db
+with app.app_context():
+    db.create_all()
+    print('Database initialized successfully')
+"
