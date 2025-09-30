@@ -32,6 +32,29 @@ logging.basicConfig(
     ]
 )
 
+# Initialize database tables and default categories
+def init_database():
+    """Initialize database tables and default categories"""
+    db.create_all()
+    
+    # Create default categories if they don't exist
+    default_categories = [
+        'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
+        'Bills & Utilities', 'Health & Fitness', 'Travel', 'Education',
+        'Personal Care', 'Other'
+    ]
+    
+    for cat_name in default_categories:
+        if not Category.query.filter_by(name=cat_name).first():
+            category = Category(name=cat_name)
+            db.session.add(category)
+    
+    db.session.commit()
+
+# Initialize database when app starts
+with app.app_context():
+    init_database()
+
 def login_required(f):
     """Decorator to require login for protected routes"""
     @wraps(f)
@@ -47,34 +70,15 @@ def validate_expense_data(data):
     for field in required_fields:
         if field not in data or not data[field]:
             return False, f'Missing required field: {field}'
-
+    
     try:
         amount = float(data['amount'])
         if amount <= 0:
             return False, 'Amount must be positive'
     except ValueError:
         return False, 'Invalid amount format'
-
+    
     return True, None
-
-@app.before_first_request
-def create_tables():
-    """Create database tables"""
-    db.create_all()
-
-    # Create default categories if they don't exist
-    default_categories = [
-        'Food & Dining', 'Transportation', 'Shopping', 'Entertainment',
-        'Bills & Utilities', 'Health & Fitness', 'Travel', 'Education',
-        'Personal Care', 'Other'
-    ]
-
-    for cat_name in default_categories:
-        if not Category.query.filter_by(name=cat_name).first():
-            category = Category(name=cat_name)
-            db.session.add(category)
-
-    db.session.commit()
 
 @app.route('/')
 def index():
@@ -86,30 +90,30 @@ def register():
     """User registration endpoint"""
     try:
         data = request.get_json()
-
+        
         # Validate input
         if not data or not data.get('username') or not data.get('password'):
             return jsonify({'error': 'Username and password required'}), 400
-
+        
         username = data['username'].strip().lower()
         password = data['password']
-
+        
         # Check if user already exists
         if User.query.filter_by(username=username).first():
             return jsonify({'error': 'Username already exists'}), 400
-
+        
         # Create new user
         user = User(
             username=username,
             password_hash=generate_password_hash(password)
         )
-
+        
         db.session.add(user)
         db.session.commit()
-
+        
         logging.info(f'New user registered: {username}')
         return jsonify({'message': 'User registered successfully'}), 201
-
+        
     except Exception as e:
         logging.error(f'Registration error: {str(e)}')
         return jsonify({'error': 'Registration failed'}), 500
@@ -119,15 +123,15 @@ def login():
     """User login endpoint"""
     try:
         data = request.get_json()
-
+        
         if not data or not data.get('username') or not data.get('password'):
             return jsonify({'error': 'Username and password required'}), 400
-
+        
         username = data['username'].strip().lower()
         password = data['password']
-
+        
         user = User.query.filter_by(username=username).first()
-
+        
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             session['username'] = user.username
@@ -138,7 +142,7 @@ def login():
             }), 200
         else:
             return jsonify({'error': 'Invalid credentials'}), 401
-
+            
     except Exception as e:
         logging.error(f'Login error: {str(e)}')
         return jsonify({'error': 'Login failed'}), 500
@@ -172,27 +176,27 @@ def get_expenses():
     """Get user expenses with optional filtering"""
     try:
         user_id = session['user_id']
-
+        
         # Get query parameters
         category_id = request.args.get('category_id', type=int)
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         limit = request.args.get('limit', 50, type=int)
-
+        
         # Build query
         query = Expense.query.filter_by(user_id=user_id)
-
+        
         if category_id:
             query = query.filter_by(category_id=category_id)
-
+        
         if start_date:
             query = query.filter(Expense.date >= datetime.fromisoformat(start_date))
-
+        
         if end_date:
             query = query.filter(Expense.date <= datetime.fromisoformat(end_date))
-
+        
         expenses = query.order_by(Expense.date.desc()).limit(limit).all()
-
+        
         return jsonify([{
             'id': exp.id,
             'description': exp.description,
@@ -202,7 +206,7 @@ def get_expenses():
             'date': exp.date.isoformat(),
             'created_at': exp.created_at.isoformat()
         } for exp in expenses]), 200
-
+        
     except Exception as e:
         logging.error(f'Get expenses error: {str(e)}')
         return jsonify({'error': 'Failed to fetch expenses'}), 500
@@ -213,17 +217,17 @@ def add_expense():
     """Add a new expense"""
     try:
         data = request.get_json()
-
+        
         # Validate input
         is_valid, error_msg = validate_expense_data(data)
         if not is_valid:
             return jsonify({'error': error_msg}), 400
-
+        
         # Check if category exists
         category = Category.query.get(data['category_id'])
         if not category:
             return jsonify({'error': 'Invalid category'}), 400
-
+        
         # Create expense
         expense = Expense(
             user_id=session['user_id'],
@@ -232,12 +236,12 @@ def add_expense():
             category_id=data['category_id'],
             date=datetime.fromisoformat(data.get('date', datetime.now().isoformat()))
         )
-
+        
         db.session.add(expense)
         db.session.commit()
-
+        
         logging.info(f'Expense added: {expense.description} - ${expense.amount}')
-
+        
         return jsonify({
             'id': expense.id,
             'description': expense.description,
@@ -247,7 +251,7 @@ def add_expense():
             'date': expense.date.isoformat(),
             'created_at': expense.created_at.isoformat()
         }), 201
-
+        
     except Exception as e:
         logging.error(f'Add expense error: {str(e)}')
         return jsonify({'error': 'Failed to add expense'}), 500
@@ -261,16 +265,16 @@ def delete_expense(expense_id):
             id=expense_id, 
             user_id=session['user_id']
         ).first()
-
+        
         if not expense:
             return jsonify({'error': 'Expense not found'}), 404
-
+        
         db.session.delete(expense)
         db.session.commit()
-
+        
         logging.info(f'Expense deleted: {expense.description}')
         return jsonify({'message': 'Expense deleted successfully'}), 200
-
+        
     except Exception as e:
         logging.error(f'Delete expense error: {str(e)}')
         return jsonify({'error': 'Failed to delete expense'}), 500
@@ -281,37 +285,37 @@ def get_summary():
     """Get expense summary and analytics"""
     try:
         user_id = session['user_id']
-
+        
         # Get date range
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-
+        
         # Build base query
         query = Expense.query.filter_by(user_id=user_id)
-
+        
         if start_date:
             query = query.filter(Expense.date >= datetime.fromisoformat(start_date))
         if end_date:
             query = query.filter(Expense.date <= datetime.fromisoformat(end_date))
-
+        
         expenses = query.all()
-
+        
         # Calculate totals
         total_amount = sum(exp.amount for exp in expenses)
         total_count = len(expenses)
-
+        
         # Category breakdown
         category_totals = {}
         for expense in expenses:
             cat_name = expense.category.name
             category_totals[cat_name] = category_totals.get(cat_name, 0) + float(expense.amount)
-
+        
         # Monthly breakdown (last 12 months)
         monthly_totals = {}
         for expense in expenses:
             month_key = expense.date.strftime('%Y-%m')
             monthly_totals[month_key] = monthly_totals.get(month_key, 0) + float(expense.amount)
-
+        
         return jsonify({
             'total_amount': float(total_amount),
             'total_count': total_count,
@@ -319,7 +323,7 @@ def get_summary():
             'monthly_breakdown': monthly_totals,
             'average_per_expense': float(total_amount / max(total_count, 1))
         }), 200
-
+        
     except Exception as e:
         logging.error(f'Get summary error: {str(e)}')
         return jsonify({'error': 'Failed to fetch summary'}), 500
