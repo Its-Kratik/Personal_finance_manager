@@ -1,401 +1,424 @@
-// Modern JavaScript with ES6+ features and proper error handling
-
-class FinanceManager {
+// Personal Finance Manager - Main Application
+class FinanceApp {
     constructor() {
-        this.apiBase = '/api';
-        this.charts = {};
+        this.currentUser = null;
+        this.expenses = [];
+        this.categories = [];
         this.init();
     }
 
-    async init() {
-        await this.loadData();
+    init() {
         this.setupEventListeners();
-        this.initCharts();
-        this.setCurrentDate();
+        this.checkAuth();
+        this.setDefaultDate();
     }
 
-    // API Methods
-    async apiCall(endpoint, options = {}) {
-        const config = {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        };
-
-        try {
-            const response = await fetch(`${this.apiBase}${endpoint}`, config);
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                throw new Error(errorData.error || `HTTP ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('API Error:', error);
-            this.showNotification(error.message, 'error');
-            throw error;
-        }
-    }
-
-    async loadData() {
-        try {
-            this.showLoading(true);
-            const [summary, budgets] = await Promise.all([
-                this.apiCall('/summary'),
-                this.apiCall('/budgets')
-            ]);
-            
-            this.updateSummaryCards(summary.monthly_summary);
-            this.updateCharts(summary.category_spending, budgets.budgets);
-        } catch (error) {
-            console.error('Failed to load data:', error);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    // UI Updates
-    updateSummaryCards(summary) {
-        const elements = {
-            totalIncome: summary.total_income || 0,
-            totalExpenses: summary.total_expense || 0,
-            netSavings: summary.net_savings || 0,
-            savingsRate: `${(summary.savings_rate || 0).toFixed(1)}%`
-        };
-
-        Object.entries(elements).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                const displayValue = typeof value === 'number' ? `$${value.toFixed(2)}` : value;
-                this.animateValue(element, displayValue);
-            }
-        });
-    }
-
-    animateValue(element, newValue) {
-        element.style.opacity = '0.5';
-        setTimeout(() => {
-            element.textContent = newValue;
-            element.style.opacity = '1';
-        }, 150);
-    }
-
-    // Chart Methods
-    initCharts() {
-        this.initCategoryChart();
-        this.initBudgetChart();
-    }
-
-    initCategoryChart() {
-        const ctx = document.getElementById('categoryChart');
-        if (!ctx) return;
-
-        this.charts.category = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [
-                        '#EF4444', '#F97316', '#F59E0B', '#EAB308',
-                        '#84CC16', '#22C55E', '#10B981', '#14B8A6',
-                        '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
-                        '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
-        });
-    }
-
-    initBudgetChart() {
-        const ctx = document.getElementById('budgetChart');
-        if (!ctx) return;
-
-        this.charts.budget = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Spent',
-                    data: [],
-                    backgroundColor: '#EF4444'
-                }, {
-                    label: 'Budget',
-                    data: [],
-                    backgroundColor: '#22C55E'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return '$' + value.toFixed(0);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    updateCharts(categorySpending, budgets) {
-        // Update category chart
-        if (this.charts.category && categorySpending.length > 0) {
-            this.charts.category.data.labels = categorySpending.map(c => c.category);
-            this.charts.category.data.datasets[0].data = categorySpending.map(c => c.total_expense);
-            this.charts.category.update('none');
-        }
-
-        // Update budget chart
-        if (this.charts.budget && budgets.length > 0) {
-            this.charts.budget.data.labels = budgets.map(b => b.category);
-            this.charts.budget.data.datasets[0].data = budgets.map(b => b.spent);
-            this.charts.budget.data.datasets[1].data = budgets.map(b => b.amount);
-            this.charts.budget.update('none');
-        }
-    }
-
-    // Event Listeners
     setupEventListeners() {
-        // Transaction form
-        const form = document.getElementById('transactionForm');
-        if (form) {
-            form.addEventListener('submit', (e) => this.handleTransactionSubmit(e));
-        }
+        // Navigation
+        document.getElementById('dashboardBtn').addEventListener('click', () => this.showSection('dashboard'));
+        document.getElementById('expensesBtn').addEventListener('click', () => this.showSection('expenses'));
+        document.getElementById('analyticsBtn').addEventListener('click', () => this.showSection('analytics'));
+        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
 
-        // Modal events
+        // Modals
+        document.getElementById('addExpenseBtn').addEventListener('click', () => this.showExpenseModal());
+        
+        // Forms
+        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
+        document.getElementById('registerForm').addEventListener('submit', (e) => this.handleRegister(e));
+        document.getElementById('expenseForm').addEventListener('submit', (e) => this.handleAddExpense(e));
+
+        // Auth tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.switchAuthTab(btn.dataset.tab));
+        });
+
+        // Close modals
+        document.querySelectorAll('.close').forEach(close => {
+            close.addEventListener('click', (e) => this.closeModal(e.target.closest('.modal')));
+        });
+
+        // Filters
+        document.getElementById('applyFilters').addEventListener('click', () => this.applyFilters());
+
+        // Close modals on outside click
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
-                this.closeModal();
-            }
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.closeModal();
-            if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                this.showAddTransactionModal();
+                this.closeModal(e.target);
             }
         });
     }
 
-    // Transaction Methods
-    async handleTransactionSubmit(e) {
+    async checkAuth() {
+        try {
+            const response = await fetch('/api/expenses?limit=1');
+            if (response.ok) {
+                await this.loadInitialData();
+                this.showApp();
+            } else {
+                this.showAuthModal();
+            }
+        } catch (error) {
+            this.showAuthModal();
+        }
+    }
+
+    async loadInitialData() {
+        await Promise.all([
+            this.loadCategories(),
+            this.loadExpenses(),
+            this.loadSummary()
+        ]);
+    }
+
+    showApp() {
+        document.querySelector('.navbar').style.display = 'flex';
+        document.querySelector('.main-content').style.display = 'block';
+        this.closeModal(document.getElementById('authModal'));
+    }
+
+    showAuthModal() {
+        document.querySelector('.navbar').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('authModal').style.display = 'block';
+    }
+
+    switchAuthTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        
+        if (tab === 'login') {
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+        } else {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+    }
+
+    async handleLogin(e) {
         e.preventDefault();
+        this.showLoading();
+
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.currentUser = data.user;
+                await this.loadInitialData();
+                this.showApp();
+                this.showToast('Login successful!', 'success');
+            } else {
+                this.showToast(data.error || 'Login failed', 'error');
+            }
+        } catch (error) {
+            this.showToast('Network error. Please try again.', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async handleRegister(e) {
+        e.preventDefault();
+        this.showLoading();
+
+        const username = document.getElementById('registerUsername').value;
+        const password = document.getElementById('registerPassword').value;
+
+        try {
+            const response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showToast('Registration successful! Please login.', 'success');
+                this.switchAuthTab('login');
+                document.getElementById('registerForm').reset();
+            } else {
+                this.showToast(data.error || 'Registration failed', 'error');
+            }
+        } catch (error) {
+            this.showToast('Network error. Please try again.', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async logout() {
+        try {
+            await fetch('/api/logout', { method: 'POST' });
+            this.currentUser = null;
+            this.expenses = [];
+            this.categories = [];
+            this.showAuthModal();
+            this.showToast('Logged out successfully', 'success');
+        } catch (error) {
+            this.showToast('Logout failed', 'error');
+        }
+    }
+
+    async loadCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            if (response.ok) {
+                this.categories = await response.json();
+                this.populateCategorySelects();
+            }
+        } catch (error) {
+            console.error('Failed to load categories:', error);
+        }
+    }
+
+    populateCategorySelects() {
+        const selects = document.querySelectorAll('#expenseCategory, #categoryFilter');
+        selects.forEach(select => {
+            // Keep the first option (placeholder)
+            const firstOption = select.querySelector('option');
+            select.innerHTML = '';
+            if (firstOption) select.appendChild(firstOption);
+
+            this.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                select.appendChild(option);
+            });
+        });
+    }
+
+    async loadExpenses() {
+        try {
+            const response = await fetch('/api/expenses');
+            if (response.ok) {
+                this.expenses = await response.json();
+                this.displayRecentExpenses();
+                this.displayAllExpenses();
+            }
+        } catch (error) {
+            console.error('Failed to load expenses:', error);
+        }
+    }
+
+    async loadSummary() {
+        try {
+            const response = await fetch('/api/summary');
+            if (response.ok) {
+                const summary = await response.json();
+                this.updateSummaryCards(summary);
+                this.updateCharts(summary);
+            }
+        } catch (error) {
+            console.error('Failed to load summary:', error);
+        }
+    }
+
+    updateSummaryCards(summary) {
+        document.getElementById('totalAmount').textContent = `$${summary.total_amount.toFixed(2)}`;
+        document.getElementById('totalCount').textContent = summary.total_count;
+        document.getElementById('averageAmount').textContent = `$${summary.average_per_expense.toFixed(2)}`;
         
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData);
+        // Calculate this month's total
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const monthlyAmount = summary.monthly_breakdown[currentMonth] || 0;
+        document.getElementById('monthlyAmount').textContent = `$${monthlyAmount.toFixed(2)}`;
+    }
+
+    displayRecentExpenses() {
+        const container = document.getElementById('recentExpensesList');
+        const recentExpenses = this.expenses.slice(0, 5);
         
-        // Validate amount
-        const amount = parseFloat(data.amount);
-        if (isNaN(amount) || amount <= 0) {
-            this.showNotification('Please enter a valid amount', 'error');
+        if (recentExpenses.length === 0) {
+            container.innerHTML = '<p>No expenses yet. Add your first expense!</p>';
             return;
         }
 
-        try {
-            this.showLoading(true);
-            
-            await this.apiCall('/transactions', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-
-            this.showNotification('Transaction added successfully!', 'success');
-            this.closeModal();
-            e.target.reset();
-            await this.loadData();
-            this.refreshTransactionTable();
-            
-        } catch (error) {
-            console.error('Failed to add transaction:', error);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async deleteTransaction(id) {
-        if (!confirm('Are you sure you want to delete this transaction?')) return;
-
-        try {
-            this.showLoading(true);
-            
-            await this.apiCall(`/transactions/${id}`, {
-                method: 'DELETE'
-            });
-
-            this.showNotification('Transaction deleted successfully!', 'success');
-            await this.loadData();
-            this.refreshTransactionTable();
-            
-        } catch (error) {
-            console.error('Failed to delete transaction:', error);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    async refreshTransactionTable() {
-        try {
-            const response = await this.apiCall('/transactions?limit=10');
-            this.updateTransactionTable(response.transactions);
-        } catch (error) {
-            console.error('Failed to refresh transactions:', error);
-        }
-    }
-
-    updateTransactionTable(transactions) {
-        const tbody = document.querySelector('#transactionTable tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = transactions.map(t => `
-            <tr>
-                <td>${t.date}</td>
-                <td>${t.description}</td>
-                <td><span class="category-badge">${t.category}</span></td>
-                <td class="amount ${t.transaction_type}">
-                    ${t.transaction_type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toFixed(2)}
-                </td>
-                <td>
-                    <button class="btn-icon btn-danger" onclick="financeManager.deleteTransaction(${t.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
+        container.innerHTML = recentExpenses.map(expense => `
+            <div class="expense-item">
+                <div class="expense-info">
+                    <div class="expense-description">${expense.description}</div>
+                    <div class="expense-meta">${expense.category} • ${this.formatDate(expense.date)}</div>
+                </div>
+                <div class="expense-amount">$${expense.amount.toFixed(2)}</div>
+                <button class="btn btn-danger" onclick="app.deleteExpense(${expense.id})">Delete</button>
+            </div>
         `).join('');
     }
 
-    // Modal Methods
-    showAddTransactionModal() {
-        const modal = document.getElementById('addTransactionModal');
-        if (modal) {
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    closeModal() {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.style.display = 'none';
-        });
-        document.body.style.overflow = 'auto';
-    }
-
-    // Utility Methods
-    showLoading(show) {
-        const overlay = document.getElementById('loadingOverlay');
-        if (overlay) {
-            overlay.style.display = show ? 'flex' : 'none';
-        }
-    }
-
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <span>${message}</span>
-            <button onclick="this.parentElement.remove()">&times;</button>
-        `;
-
-        // Add notification styles if not already added
-        if (!document.querySelector('#notification-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'notification-styles';
-            styles.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 16px 20px;
-                    border-radius: 8px;
-                    color: white;
-                    z-index: 10000;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    min-width: 300px;
-                    animation: slideInRight 0.3s ease-out;
-                }
-                .notification-success { background-color: #10B981; }
-                .notification-error { background-color: #EF4444; }
-                .notification-info { background-color: #3B82F6; }
-                .notification button {
-                    background: none;
-                    border: none;
-                    color: white;
-                    font-size: 18px;
-                    cursor: pointer;
-                    margin-left: 10px;
-                }
-                @keyframes slideInRight {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(styles);
+    displayAllExpenses() {
+        const container = document.getElementById('expensesList');
+        
+        if (this.expenses.length === 0) {
+            container.innerHTML = '<div class="card"><p>No expenses found. Start tracking your expenses!</p></div>';
+            return;
         }
 
-        document.body.appendChild(notification);
+        container.innerHTML = this.expenses.map(expense => `
+            <div class="expense-item">
+                <div class="expense-info">
+                    <div class="expense-description">${expense.description}</div>
+                    <div class="expense-meta">${expense.category} • ${this.formatDate(expense.date)}</div>
+                </div>
+                <div class="expense-amount">$${expense.amount.toFixed(2)}</div>
+                <button class="btn btn-danger" onclick="app.deleteExpense(${expense.id})">Delete</button>
+            </div>
+        `).join('');
+    }
 
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
+    showExpenseModal() {
+        document.getElementById('expenseModal').style.display = 'block';
+    }
+
+    async handleAddExpense(e) {
+        e.preventDefault();
+        this.showLoading();
+
+        const formData = {
+            description: document.getElementById('expenseDescription').value,
+            amount: parseFloat(document.getElementById('expenseAmount').value),
+            category_id: parseInt(document.getElementById('expenseCategory').value),
+            date: document.getElementById('expenseDate').value
+        };
+
+        try {
+            const response = await fetch('/api/expenses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.closeModal(document.getElementById('expenseModal'));
+                document.getElementById('expenseForm').reset();
+                this.setDefaultDate();
+                await this.loadExpenses();
+                await this.loadSummary();
+                this.showToast('Expense added successfully!', 'success');
+            } else {
+                this.showToast(data.error || 'Failed to add expense', 'error');
             }
-        }, 5000);
-    }
-
-    setCurrentDate() {
-        const dateInput = document.getElementById('date');
-        if (dateInput) {
-            dateInput.value = new Date().toISOString().split('T')[0];
+        } catch (error) {
+            this.showToast('Network error. Please try again.', 'error');
+        } finally {
+            this.hideLoading();
         }
     }
-}
 
-// Global functions for HTML onclick handlers
-function showAddTransactionModal() {
-    financeManager.showAddTransactionModal();
-}
+    async deleteExpense(expenseId) {
+        if (!confirm('Are you sure you want to delete this expense?')) return;
 
-function closeModal() {
-    financeManager.closeModal();
-}
+        this.showLoading();
 
-function deleteTransaction(id) {
-    financeManager.deleteTransaction(id);
+        try {
+            const response = await fetch(`/api/expenses/${expenseId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                await this.loadExpenses();
+                await this.loadSummary();
+                this.showToast('Expense deleted successfully!', 'success');
+            } else {
+                const data = await response.json();
+                this.showToast(data.error || 'Failed to delete expense', 'error');
+            }
+        } catch (error) {
+            this.showToast('Network error. Please try again.', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    async applyFilters() {
+        const categoryId = document.getElementById('categoryFilter').value;
+        const startDate = document.getElementById('startDateFilter').value;
+        const endDate = document.getElementById('endDateFilter').value;
+
+        const params = new URLSearchParams();
+        if (categoryId) params.append('category_id', categoryId);
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+
+        try {
+            const response = await fetch(`/api/expenses?${params}`);
+            if (response.ok) {
+                this.expenses = await response.json();
+                this.displayAllExpenses();
+            }
+        } catch (error) {
+            this.showToast('Failed to apply filters', 'error');
+        }
+    }
+
+    updateCharts(summary) {
+        this.updateCategoryChart(summary.category_breakdown);
+        this.updateMonthlyChart(summary.monthly_breakdown);
+    }
+
+    showSection(sectionName) {
+        // Update nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${sectionName}Btn`).classList.add('active');
+
+        // Show/hide sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.add('hidden');
+        });
+        document.getElementById(sectionName).classList.remove('hidden');
+
+        // Load analytics when showing analytics section
+        if (sectionName === 'analytics') {
+            setTimeout(() => this.loadSummary(), 100);
+        }
+    }
+
+    closeModal(modal) {
+        modal.style.display = 'none';
+    }
+
+    setDefaultDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('expenseDate').value = today;
+    }
+
+    formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString();
+    }
+
+    showLoading() {
+        document.getElementById('loadingSpinner').classList.remove('hidden');
+    }
+
+    hideLoading() {
+        document.getElementById('loadingSpinner').classList.add('hidden');
+    }
+
+    showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast ${type} show`;
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
 }
 
 // Initialize app when DOM is loaded
-let financeManager;
 document.addEventListener('DOMContentLoaded', () => {
-    financeManager = new FinanceManager();
+    window.app = new FinanceApp();
 });
-
-// PWA Service Worker Registration
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
-            .then(registration => console.log('SW registered'))
-            .catch(error => console.log('SW registration failed'));
-    });
-}
