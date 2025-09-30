@@ -32,4 +32,4 @@ except Exception as e:
     # Don't fail the build for database issues
 "
 
-echo "
+echo "🎉 Build completed successfully!"
