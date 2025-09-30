@@ -1,5 +1,5 @@
 """
-Personal Finance Manager - Configuration
+Personal Finance Manager - Configuration  
 Environment-based configuration for Flask app
 """
 
@@ -18,11 +18,11 @@ class Config:
     
     if supabase_url and supabase_password:
         # Extract project ID from Supabase URL  
-        project_id = supabase_url.split('//')[1].split('.')[0]  # oukvupktsrjjqjdbnydd
+        project_id = supabase_url.split('//')[1].split('.')[0]
         
         # Use Session pooler connection (best for Render deployment)
-        SQLALCHEMY_DATABASE_URI = f'postgresql://postgres.{project_id}:{supabase_password}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres'
-        print(f"Using Supabase PostgreSQL database (Project: {project_id})")
+        SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg://postgres.{project_id}:{supabase_password}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres'
+        print(f"Using Supabase PostgreSQL database (Project: {project_id}) with psycopg3")
     else:
         # Development: Use SQLite
         basedir = os.path.abspath(os.path.dirname(__file__))
