@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: personal-finance-manager
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn controller:app"
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
