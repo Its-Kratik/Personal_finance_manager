@@ -3,142 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Track and manage your personal finances efficiently">
+    <meta name="theme-color" content="#667eea">
     <title>Personal Finance Manager</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#2c3e50">
 </head>
 <body>
-    <div id="app">
-        <!-- Login/Register Modal -->
-        <div id="authModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <div class="auth-tabs">
-                    <button class="tab-btn active" data-tab="login">Login</button>
-                    <button class="tab-btn" data-tab="register">Register</button>
-                </div>
-                
-                <form id="loginForm" class="auth-form">
-                    <h2>Login</h2>
-                    <input type="text" id="loginUsername" placeholder="Username" required>
-                    <input type="password" id="loginPassword" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                </form>
-                
-                <form id="registerForm" class="auth-form hidden">
-                    <h2>Register</h2>
-                    <input type="text" id="registerUsername" placeholder="Username" required>
-                    <input type="password" id="registerPassword" placeholder="Password" required>
-                    <button type="submit">Register</button>
-                </form>
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close" aria-label="Close">&times;</span>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-tab="login" type="button">Login</button>
+                <button class="tab-btn" data-tab="register" type="button">Register</button>
             </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <h2>Welcome Back</h2>
+                <input 
+                    type="text" 
+                    id="loginUsername" 
+                    placeholder="Username" 
+                    required 
+                    autocomplete="username"
+                    aria-label="Username">
+                <input 
+                    type="password" 
+                    id="loginPassword" 
+                    placeholder="Password" 
+                    required 
+                    autocomplete="current-password"
+                    aria-label="Password">
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form hidden">
+                <h2>Create Account</h2>
+                <input 
+                    type="text" 
+                    id="registerUsername" 
+                    placeholder="Username" 
+                    required 
+                    autocomplete="username"
+                    aria-label="Username">
+                <input 
+                    type="password" 
+                    id="registerPassword" 
+                    placeholder="Password" 
+                    required 
+                    autocomplete="new-password"
+                    aria-label="Password">
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
         </div>
-
-        <!-- Navigation -->
-        <nav class="navbar">
-            <div class="nav-brand">💰 Finance Manager</div>
-            <div class="nav-links">
-                <button id="dashboardBtn" class="nav-btn active">Dashboard</button>
-                <button id="expensesBtn" class="nav-btn">Expenses</button>
-                <button id="analyticsBtn" class="nav-btn">Analytics</button>
-                <button id="logoutBtn" class="nav-btn">Logout</button>
-            </div>
-        </nav>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Dashboard Section -->
-            <section id="dashboard" class="content-section">
-                <div class="dashboard-header">
-                    <h1>Dashboard</h1>
-                    <button id="addExpenseBtn" class="btn btn-primary">+ Add Expense</button>
-                </div>
-                
-                <div class="summary-cards">
-                    <div class="card">
-                        <h3>Total Expenses</h3>
-                        <p id="totalAmount" class="amount">$0.00</p>
-                    </div>
-                    <div class="card">
-                        <h3>This Month</h3>
-                        <p id="monthlyAmount" class="amount">$0.00</p>
-                    </div>
-                    <div class="card">
-                        <h3>Average per Expense</h3>
-                        <p id="averageAmount" class="amount">$0.00</p>
-                    </div>
-                    <div class="card">
-                        <h3>Total Count</h3>
-                        <p id="totalCount" class="count">0</p>
-                    </div>
-                </div>
-
-                <div class="recent-expenses">
-                    <h2>Recent Expenses</h2>
-                    <div id="recentExpensesList" class="expense-list"></div>
-                </div>
-            </section>
-
-            <!-- Expenses Section -->
-            <section id="expenses" class="content-section hidden">
-                <div class="expenses-header">
-                    <h1>Expenses</h1>
-                    <div class="filters">
-                        <select id="categoryFilter">
-                            <option value="">All Categories</option>
-                        </select>
-                        <input type="date" id="startDateFilter">
-                        <input type="date" id="endDateFilter">
-                        <button id="applyFilters" class="btn btn-secondary">Apply Filters</button>
-                    </div>
-                </div>
-                
-                <div id="expensesList" class="expense-list"></div>
-            </section>
-
-            <!-- Analytics Section -->
-            <section id="analytics" class="content-section hidden">
-                <h1>Analytics</h1>
-                <div class="charts-container">
-                    <div class="chart-card">
-                        <h3>Spending by Category</h3>
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                    <div class="chart-card">
-                        <h3>Monthly Spending Trend</h3>
-                        <canvas id="monthlyChart"></canvas>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Add Expense Modal -->
-        <div id="expenseModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <form id="expenseForm">
-                    <h2>Add Expense</h2>
-                    <input type="text" id="expenseDescription" placeholder="Description" required>
-                    <input type="number" id="expenseAmount" placeholder="Amount" step="0.01" required>
-                    <select id="expenseCategory" required>
-                        <option value="">Select Category</option>
-                    </select>
-                    <input type="date" id="expenseDate" required>
-                    <button type="submit" class="btn btn-primary">Add Expense</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="spinner hidden">
-            <div class="spinner-circle"></div>
-        </div>
-
-        <!-- Toast Notifications -->
-        <div id="toast" class="toast"></div>
     </div>
 
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation">
+        <div class="nav-brand">💰 Finance Manager</div>
+        <div class="nav-links">
+            <button id="dashboardBtn" class="nav-btn active" type="button">Dashboard</button>
+            <button id="expensesBtn" class="nav-btn" type="button">Expenses</button>
+            <button id="analyticsBtn" class="nav-btn" type="button">Analytics</button>
+            <button id="logoutBtn" class="nav-btn" type="button">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="content-section">
+            <div class="dashboard-header">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Overview of your finances</p>
+                </div>
+                <button id="addExpenseBtn" class="btn btn-primary" type="button">+ Add Expense</button>
+            </div>
+            
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <article class="card">
+                    <h3>Total Expenses</h3>
+                    <p id="totalAmount" class="amount">$0.00</p>
+                </article>
+                <article class="card">
+                    <h3>This Month</h3>
+                    <p id="monthlyAmount" class="amount">$0.00</p>
+                </article>
+                <article class="card">
+                    <h3>Average Expense</h3>
+                    <p id="averageAmount" class="amount">$0.00</p>
+                </article>
+                <article class="card">
+                    <h3>Total Count</h3>
+                    <p id="totalCount" class="count">0</p>
+                </article>
+            </div>
+
+            <!-- Recent Expenses -->
+            <div class="recent-expenses">
+                <h2>Recent Expenses</h2>
+                <div id="recentExpensesList" class="expense-list">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Expenses Section -->
+        <section id="expenses" class="content-section hidden">
+            <div class="expenses-header">
+                <h1>All Expenses</h1>
+                
+                <!-- Filters -->
+                <div class="filters">
+                    <select id="categoryFilter" aria-label="Filter by category">
+                        <option value="">All Categories</option>
+                    </select>
+                    <input 
+                        type="date" 
+                        id="startDateFilter" 
+                        aria-label="Start date"
+                        placeholder="Start Date">
+                    <input 
+                        type="date" 
+                        id="endDateFilter" 
+                        aria-label="End date"
+                        placeholder="End Date">
+                    <button id="applyFilters" class="btn btn-secondary" type="button">Apply</button>
+                </div>
+            </div>
+            
+            <div id="expensesList" class="expense-list">
+                <!-- Dynamic content -->
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics" class="content-section hidden">
+            <h1>Analytics</h1>
+            <p>Visualize your spending patterns</p>
+            
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Spending by Category</h3>
+                    <canvas id="categoryChart" aria-label="Category spending chart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Monthly Trend</h3>
+                    <canvas id="monthlyChart" aria-label="Monthly spending trend chart"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add Expense Modal -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content">
+            <span class="close" aria-label="Close">&times;</span>
+            <form id="expenseForm">
+                <h2>Add New Expense</h2>
+                <input 
+                    type="text" 
+                    id="expenseDescription" 
+                    placeholder="Description (e.g., Groceries)" 
+                    required 
+                    aria-label="Expense description">
+                <input 
+                    type="number" 
+                    id="expenseAmount" 
+                    placeholder="Amount" 
+                    step="0.01" 
+                    min="0.01" 
+                    required 
+                    aria-label="Expense amount">
+                <select id="expenseCategory" required aria-label="Expense category">
+                    <option value="">Select Category</option>
+                </select>
+                <input 
+                    type="date" 
+                    id="expenseDate" 
+                    required 
+                    aria-label="Expense date">
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="spinner hidden" role="status" aria-live="polite">
+        <div class="spinner-circle"></div>
+        <span class="sr-only">Loading...</span>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
