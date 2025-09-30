@@ -1,27 +1,7 @@
-# Core Flask Framework
-Flask==3.0.0
-Werkzeug==3.0.1
-
-# Database
-Flask-SQLAlchemy==3.1.1
-psycopg2-binary==2.9.9
-
-# Security & Forms
-Flask-WTF==1.2.1
-WTForms==3.1.1
-Flask-Talisman==1.1.0
-Flask-CORS==4.0.0
-cryptography==41.0.8
-bcrypt==4.1.2
-
-# Environment & Configuration
-python-dotenv==1.0.0
-
-# Validation
-email-validator==2.1.0
-
-# Production Server
+Flask==2.3.3
+Werkzeug==2.3.7
+Flask-Limiter==3.5.0
+Flask-Talisman==1.0.0
+bleach==6.0.0
 gunicorn==21.2.0
-
-# Additional utilities (optional but recommended)
-python-dateutil==2.8.2
+python-dotenv==1.0.0
