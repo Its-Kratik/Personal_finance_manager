@@ -1,35 +1,20 @@
 #!/usr/bin/env bash
-# Exit on error
 set -o errexit
 
-echo "🚀 Starting build process..."
+echo "🚀 Starting minimal build..."
 
-# Upgrade pip first
-echo "📦 Upgrading pip..."
+# Upgrade pip
 python -m pip install --upgrade pip
 
-# Install dependencies with verbose output
-echo "📋 Installing dependencies..."
-pip install --no-cache-dir -r requirements.txt
+# Install minimal dependencies
+echo "📦 Installing minimal dependencies..."
+pip install --no-cache-dir Flask==3.0.0
+pip install --no-cache-dir Flask-SQLAlchemy==3.1.1
+pip install --no-cache-dir psycopg2-binary==2.9.9
+pip install --no-cache-dir gunicorn==21.2.0
 
-echo "📁 Creating necessary directories..."
+# Create directories
+echo "📁 Creating directories..."
 mkdir -p logs data
 
-echo "🗄️ Initializing database..."
-python -c "
-import os
-import sys
-sys.path.insert(0, '.')
-
-try:
-    from controller import app
-    from model import db
-    with app.app_context():
-        db.create_all()
-        print('✅ Database initialized successfully')
-except Exception as e:
-    print(f'⚠️ Database initialization error: {e}')
-    # Don't fail the build for database issues
-"
-
-echo "🎉 Build completed successfully!"
+echo "✅ Minimal build completed!"
