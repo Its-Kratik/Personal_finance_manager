@@ -1,5 +1,5 @@
 """
-Personal Finance Manager - Configuration  
+Personal Finance Manager - Configuration
 Environment-based configuration for Flask app
 """
 
@@ -12,17 +12,13 @@ class Config:
     # Basic Flask settings
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
-    # Supabase Database Configuration
-    supabase_url = os.environ.get('SUPABASE_URL', '').strip()
-    supabase_password = os.environ.get('SUPABASE_PASSWORD', '').strip()
+    # Database configuration - Use DATABASE_URL directly
+    database_url = os.environ.get('DATABASE_URL', '').strip()
     
-    if supabase_url and supabase_password:
-        # Extract project ID from Supabase URL  
-        project_id = supabase_url.split('//')[1].split('.')[0]
-        
-        # Use Session pooler connection (best for Render deployment)
-        SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg://postgres.{project_id}:{supabase_password}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres'
-        print(f"Using Supabase PostgreSQL database (Project: {project_id}) with psycopg3")
+    if database_url:
+        # Production: Use the provided DATABASE_URL
+        SQLALCHEMY_DATABASE_URI = database_url
+        print(f"Using database: {database_url.split('@')[1].split('/')[0] if '@' in database_url else 'Unknown'}")
     else:
         # Development: Use SQLite
         basedir = os.path.abspath(os.path.dirname(__file__))
@@ -72,29 +68,6 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     FLASK_ENV = 'production'
-    
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
-        
-        # Production-specific setup
-        import logging
-        from logging.handlers import RotatingFileHandler
-        
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        
-        file_handler = RotatingFileHandler(
-            'logs/app.log', maxBytes=10240000, backupCount=10
-        )
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        
-        app.logger.setLevel(logging.INFO)
-        app.logger.info('Personal Finance Manager startup')
 
 class TestingConfig(Config):
     """Testing configuration"""
