@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import secrets
+from sqlalchemy import text
 
 from model import db, User, Expense, Category
 from config import Config
@@ -53,7 +53,15 @@ def init_database():
 
 # Initialize database when app starts
 with app.app_context():
-    init_database()
+    try:
+        init_database()
+        
+        # Test database connection using proper SQLAlchemy 2.0 syntax
+        result = db.session.execute(text('SELECT 1 as test')).fetchone()
+        if result:
+            print('✅ Database connection test passed')
+    except Exception as e:
+        print(f'❌ Database initialization error: {e}')
 
 def login_required(f):
     """Decorator to require login for protected routes"""
