@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
-# Build script for Render deployment
+# Exit on error
+set -o errexit
 
-set -o errexit  # Exit on error
+echo "🚀 Starting build process..."
 
-# Install Python dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+# Upgrade pip first
+echo "📦 Upgrading pip..."
+python -m pip install --upgrade pip
 
-# Create necessary directories
+# Install dependencies with verbose output
+echo "📋 Installing dependencies..."
+pip install --no-cache-dir -r requirements.txt
+
+echo "📁 Creating necessary directories..."
 mkdir -p logs data
 
-# Set executable permissions
-chmod +x build.sh
+echo "🗄️ Initializing database..."
+python -c "
+import os
+import sys
+sys.path.insert(0, '.')
 
-echo "Build completed successfully!"
+try:
+    from controller import app
+    from model import db
+    with app.app_context():
+        db.create_all()
+        print('✅ Database initialized successfully')
+except Exception as e:
+    print(f'⚠️ Database initialization error: {e}')
+    # Don't fail the build for database issues
+"
+
+echo "
