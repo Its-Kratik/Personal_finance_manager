@@ -15,10 +15,19 @@ class Config:
     # Database configuration - Use DATABASE_URL directly
     database_url = os.environ.get('DATABASE_URL', '').strip()
     
-    if database_url:
+    if database_url and database_url.startswith(('postgres://', 'postgresql://')):
         # Production: Use the provided DATABASE_URL
         SQLALCHEMY_DATABASE_URI = database_url
-        print(f"Using database: {database_url.split('@')[1].split('/')[0] if '@' in database_url else 'Unknown'}")
+        
+        # Extract hostname for display (fix the parsing)
+        try:
+            if '@' in database_url:
+                hostname_part = database_url.split('@')[1].split('/')[0]
+                print(f"Using PostgreSQL database: {hostname_part}")
+            else:
+                print("Using PostgreSQL database")
+        except:
+            print("Using PostgreSQL database")
     else:
         # Development: Use SQLite
         basedir = os.path.abspath(os.path.dirname(__file__))
