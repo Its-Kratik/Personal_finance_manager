@@ -12,17 +12,17 @@ class Config:
     # Basic Flask settings
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
-    # Database configuration with better error handling
-    database_url = os.environ.get('DATABASE_URL', '').strip()
+    # Supabase Database Configuration
+    supabase_url = os.environ.get('SUPABASE_URL', '').strip()
+    supabase_password = os.environ.get('SUPABASE_PASSWORD', '').strip()
     
-    if database_url and database_url.startswith(('postgres://', 'postgresql://')):
-        # Production: Use PostgreSQL on Render
-        # Handle both postgres:// and postgresql:// schemes
-        if database_url.startswith('postgres://'):
-            SQLALCHEMY_DATABASE_URI = database_url.replace('postgres://', 'postgresql://', 1)
-        else:
-            SQLALCHEMY_DATABASE_URI = database_url
-        print(f"Using PostgreSQL database: {SQLALCHEMY_DATABASE_URI[:50]}...")
+    if supabase_url and supabase_password:
+        # Extract project ID from Supabase URL  
+        project_id = supabase_url.split('//')[1].split('.')[0]  # oukvupktsrjjqjdbnydd
+        
+        # Use Session pooler connection (best for Render deployment)
+        SQLALCHEMY_DATABASE_URI = f'postgresql://postgres.{project_id}:{supabase_password}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres'
+        print(f"Using Supabase PostgreSQL database (Project: {project_id})")
     else:
         # Development: Use SQLite
         basedir = os.path.abspath(os.path.dirname(__file__))
@@ -37,6 +37,8 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
+        'pool_size': 10,
+        'max_overflow': 20
     }
     
     # Session configuration
